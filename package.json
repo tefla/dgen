@@ -1,0 +1,16 @@
+{
+    "name": "dgen",
+    "version": "0.2.0",
+    "dependencies": {},
+    "devDependencies": {
+        "grunt": "~0.4.1",
+        "grunt-contrib-jshint": "~0.4.1",
+        "grunt-typescript": "~0.1.6",
+        "grunt-jstestdriver": "~2.2.0",
+        "grunt-shell": "0.2.2",
+        "matchdep": "~0.1.1"
+    },
+    "engines": {
+        "node": ">=0.8.0"
+    }
+}

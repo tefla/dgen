@@ -1,0 +1,328 @@
+<!doctype html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+<head>
+    <meta charset="utf-8">
+    <title>dgen - Fake Data Generator</title>
+    <style>
+    html, body {
+        width: 960px;
+        margin: 1em auto 3em;
+        font-family: verdana;
+    }
+    svg {
+        display: block;
+        margin: 1em auto 2em;
+    }
+    div.error {
+        margin: 1em auto 2em;
+        padding: 0.5em 1em;
+        background-color: #F33;
+        color: white;
+        -moz-box-sizing: border-box;
+        -webkit-box-sizing: border-box;
+        box-sizing: border-box;
+        width: 800px;
+    }
+
+    svg path {
+        fill: transparent;
+    }
+
+    svg .axis text {
+        font: 10px sans-serif;
+        fill: #999;
+    }
+    svg .axis path {
+        fill: none;
+        stroke: #999;
+        shape-rendering: crispEdges;
+    }
+
+    pre {
+        width: 800px;
+        margin: 0 auto;
+        background-color: #EEE;
+    }
+    code {
+        background-color: #EEE;
+    }
+    </style>
+</head>
+<body>
+    <h1>dgen - Fake Data Generator</h1>
+
+    <h2>Motivation</h2>
+
+    <p>Most books on data visualization say that you have to start from "real" data. In real world, however, it is often not possible to wait for data to be available first.</p>
+
+    <p>Programmers often face similar situations. For example, one needs to use someone else's code which is not finished yet in order to test or run the code he or she is currently working on. This is so typical and programmers figured out how to solve this kind of problem a long time ago.</p>
+
+    <p>One of these solutions is to use Mock objects:</p>
+
+    <blockquote>Mock objects are simulated objects that mimic the behavior of real objects in controlled ways. --<a href="http://en.wikipedia.org/wiki/Mock_object">wikipedia</a></blockquote>
+
+    <p>By using mock objects, we can also emulate all kinds of weird situations which are impossible or very hard to reproduce with real objects. What a nice side-effect!</p>
+
+    <p>As a data visualization engineer, I thought that it would be nice to have something similar to mock objects.</p>
+
+
+
+    <h2>What it does</h2>
+
+    <p>Let's start from the simplest type of data - a arithmetic sequence:</p>
+
+    <pre class="run"><code>
+    var seq = new dgen.seqs.Arithmetic();
+    var data = [seq.next(), seq.next(), seq.next(), seq.next(), seq.next()];
+    </code></pre>
+
+    <p>This will give you <code>[0, 1, 2, 3, 4]</code>. For a convenience, you can use <code>array()</code> function:</p>
+
+    <pre><code>
+    var seq = new dgen.seqs.Arithmetic();
+    var data = seq.array(5);
+    console.log(data);
+    </code></pre>
+
+    <p>You can also make it starts from 3 and increase by 0.5:</p>
+
+    <pre><code>
+    var seq = new dgen.seqs.Arithmetic();
+    seq.setStart(3);
+    seq.setStep(0.5);
+    var data = seq.array(5);
+    </code></pre>
+
+    <p>This will give you <code>[3, 3.5, 4, 4.5, 5]</code>.</p>
+
+    <p>It is possible to chaining all the calls:</p>
+
+    <pre><code>
+    var data = new dgen.seqs.Arithmetic()
+        .setStart(3)
+        .setStep(0.5)
+        .array(5);
+    </code></pre>
+
+    <p>Pretty cool, isn't it?</p>
+
+    <p>Now let's try something useful. Real data such as a time series often has a period. How to make that kind of data? That's pretty simple - just call <code>setMap()</code> function with any kind of periodic function. In this case I used sine function:</p>
+
+    <pre class="run"><code>
+    var data = new dgen.seqs.Arithmetic()
+        .setStart(0)
+        .setStep(Math.PI * 2 / 25)
+        .setMap(Math.sin)
+        .array(100);
+    </code></pre>
+
+    <p>The problem is that it is so regular and doesn't look like real data. To make it more real, we need some kind of randomness. Let's generate random data using simple random sequence:</p>
+
+    <pre class="run"><code>
+    var data = new dgen.seqs.Random()
+        .array(100);
+    </code></pre>
+
+    <p>Cool. All we have to do now is to combine these two sequences using <code>Combine</code> sequence:</p>
+
+    <pre class="run"><code>
+    var period = new dgen.seqs.Arithmetic()
+        .setStart(0)
+        .setStep(Math.PI * 2 / 25)
+        .setMap(Math.sin);
+    var noise = new dgen.seqs.Random();
+
+    var data = new dgen.seqs.Combine([period, noise])
+        .array(100);
+    </code></pre>
+
+    <p>Can we make it slowly increase over time? Sure. Just add simple arithmetic sequence into above data. Note that this time I passed an array of sequences at once:<p>
+
+    <pre class="run"><code>
+    // Arithmetic sequence accepts start and step as a constructor parameters
+    var period = new dgen.seqs.Arithmetic(0, Math.PI * 2 / 25)
+        .setMap(Math.sin);
+    var noise = new dgen.seqs.Random();
+    var trend = new dgen.seqs.Arithmetic(0, 0.05);
+
+    var data = new dgen.seqs.Combine([period, noise, trend]).array(100);
+    </code></pre>
+
+    <p>Let's make it little bit more realistic by adding occasional peaks. How can I add occasional peaks? <code>dgen.seqs.Random</code> allows you to choose which RNG to use. Maybe it would be good to use pareto random instead of default uniform random:<p>
+
+    <pre class="run"><code>
+    var data = new dgen.seqs.Random()
+        .setRng(new dgen.rngs.Pareto(1.5))
+        .array(100);
+    </code></pre>
+
+    <p>Compare it with uniform random:</p>
+
+    <pre class="run"><code>
+    var data = new dgen.seqs.Random()
+        .setRng(new dgen.rngs.Uniform())
+        .array(100);
+    </code></pre>
+
+    <p>Can you see the difference? Let's apply pareto random to make occasional peaks:</p>
+
+    <pre class="run"><code>
+    var period = new dgen.seqs.Arithmetic(0, Math.PI * 2 / 25)
+        .setMap(Math.sin);
+    var noise = new dgen.seqs.Random()
+        .setRng(new dgen.rngs.Pareto(1.5));
+    var trend = new dgen.seqs.Arithmetic(0, 0.05);
+
+    var data = new dgen.seqs.Combine([period, noise, trend]).array(100);
+    </code></pre>
+
+    <p>This is not something I expected. What happened here? The problem is different scales between sequences. <code>period</code> goes from -1 to +1 but <code>noise</code> has much more variability. So when we combine these two, pattern of the former often flatten out. That's why you can't see periodic pattern in the above graph.</p>
+
+    <p>What should I do with this problem? Normalize sequences:</p>
+
+    <pre class="run"><code>
+    var data = new dgen.seqs.Random()
+        .setRng(new dgen.rngs.Pareto(1.5))
+        .array(100, new dgen.norms.Minmax(0, 2));
+    </code></pre>
+
+    <p>If you pass normalizer to <code>array()</code> function as a second argument, resulting array will be normalized accoring to it. In this case, I used <code>dgen.norms.Minmax</code> which make data fit with in given range while preserving existing pattern. You can see y axis goes extractly from 0 to 2.</p>
+
+    <p>Let's try to combine different sequences again, with normalizer this time:</p>
+
+    <pre class="run"><code>
+    var period = new dgen.seqs.Arithmetic(0, Math.PI *2 / 25)
+        .setMap(Math.sin);
+    var noise = new dgen.seqs.Random()
+        .setRng(new dgen.rngs.Pareto(1.5))
+        .array(100, new dgen.norms.Minmax(0, 2));
+    var trend = new dgen.seqs.Arithmetic(0, 0.05);
+
+    var data = new dgen.seqs.Combine([period, noise, trend]).array(100);
+    </code></pre>
+
+    <p>It looks better now. Notice that <code>var noise</code> is not a sequence but an array because I called <code>array()</code>. But somehow, I was able to pass this array to <code>dgen.seqs.Combine</code> along with other sequences - <code>period</code> and <code>trend</code>. It works because <code>dgen.seqs.Combine</code> internally converts array into sequence.</p>
+
+
+    <h2>Correlated dataset</h2>
+
+    <p>Say you have to generate set of data represents number of tweets over time by gender. If you generate two random dataset for each genders, it won't look like real because there will be no correlation two dataset. In real world, these kind of dataset have some kind of correlation:</p>
+
+    <pre class="run"><code>
+    function generate(len) {
+        return new dgen.seqs.Random().array(len);
+    }
+    var data = [generate(100), generate(100)];
+    </code></pre>
+
+    <p>TODO: Finish this section</p>
+
+    <h2>Time series</h2>
+
+    <p>Usually, time series data has some typical patterns. Weekends are different from weekdays, and midnights are different from noons.<p>
+
+    <p>To represent such regularities, <code>dgen</code> provides <code>dgen.seqs.Cycle</code> sequence:</p>
+
+    <pre class="run"><code>
+    var data = new dgen.seqs.Cycle([12, 10, 9, 11, 14, 21, 22])
+        .array(7 * 10); // 10 weeks
+    </code></pre>
+
+    <h2>What's on the TODO list?</h2>
+
+    <p>Here's TODO list:</p>
+
+    <ul>
+        <li>Utility function for time series data</li>
+        <li>Generating multi-dimensional data</li>
+        <li>Mocking correlations between data</li>
+        <li>Generating categorical data such as names</li>
+    </ul>
+
+    <p>Meanwhile, you can browse <a href="https://github.com/akngs/dgen">source code</a>.
+
+    <script src="http://d3js.org/d3.v3.min.js"></script>
+    <script src="http://requirejs.org/docs/release/2.1.6/minified/require.js"></script>
+    <script src="random.js"></script>
+    <script>
+    require(['dgen'], function(dgen) {
+        function evaluateCodes() {
+            var codes = document.querySelectorAll('.run code');
+            for(var i = 0; i < codes.length; i++) {
+                var code = codes[i];
+                var parent = code.parentNode.parentNode;
+                var timeSeries = code.parentNode.className.split(' ').indexOf('ts') !== -1;
+                var div = document.createElement('div');
+                parent.insertBefore(div, code.parentNode.nextSibling);
+
+                var exception = null;
+
+                try {
+                    eval(code.innerHTML);
+                } catch(e) {
+                    exception = e;
+                }
+
+                if(exception) {
+                    div.setAttribute('class', 'error');
+                    div.innerHTML = 'Error: ' + exception;
+                    return;
+                }
+
+                var x = (timeSeries ? d3.time.scale() : d3.scale.linear()).range([15, 790]);
+                var y = d3.scale.linear().range([70, 10]);
+                var color = d3.scale.category10();
+                var line = d3.svg.line().interpolate('monotone');
+                var axisX = d3.svg.axis().scale(x).orient('bottom');
+                var axisY = d3.svg.axis().scale(y).orient('right').ticks(2);
+                var values; // two-dimensional array
+
+                if(data[0].key) {
+                    values = [data];
+                    x.domain(d3.extent(data, function(d) {return d.key;}));
+                    y.domain(d3.extent(data, function(d) {return d.value;}));
+                    line
+                            .x(function(d) {return x(d.key);})
+                            .y(function(d) {return y(d.value);});
+                } else {
+                    values = _isArray(data[0]) ? data : [data];
+                    x.domain([0, values[0].length - 1]);
+                    y.domain(d3.extent(d3.merge(values)));
+                    line
+                            .x(function(d, i) {return x(i);})
+                            .y(function(d) {return y(d);});
+                }
+
+                var svg = d3.select(div).append('svg');
+                svg
+                        .attr('width', 800)
+                        .attr('height', 100)
+                        .selectAll('path.line').data(values).enter()
+                        .append('path')
+                        .attr('class', 'line')
+                        .style('stroke', function(d, i) {
+                            return color(i);
+                        })
+                        .attr('d', line);
+                svg.append('g')
+                        .attr('class', 'axis x')
+                        .attr("transform", "translate(0,80)")
+                        .call(axisX);
+                svg.append('g')
+                        .attr('class', 'axis y')
+                        .call(axisY);
+            }
+        }
+
+        function _isArray(value) {
+            return Object.prototype.toString.call(value) === '[object Array]';
+        }
+
+        evaluateCodes();
+    });
+    </script>
+</body>
+</html>
